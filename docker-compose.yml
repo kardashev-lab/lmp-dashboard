@@ -1,0 +1,9 @@
+services:
+  web:
+    build:
+      context: ./web
+    ports:
+      - "3000:3000"
+    environment:
+      KARDASHEV_API_URL: https://data.kardashevlabs.org
+      NEXT_PUBLIC_SITE_URL: https://lmp.kardashevlabs.org
