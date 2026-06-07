@@ -40,3 +40,73 @@ body {
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 4px; }
+
+/* ── Ticker ─────────────────────────────────────────────── */
+@keyframes ticker-scroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.ticker-inner {
+  display: flex;
+  animation: ticker-scroll 70s linear infinite;
+  width: max-content;
+}
+.ticker-inner:hover { animation-play-state: paused; }
+
+/* ── Responsive layout ──────────────────────────────────── */
+.page-header-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 40px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.page-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 48px 40px 0;
+}
+
+.hero-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 60px;
+}
+
+.hero-card { padding: 18px 22px; }
+.hero-card-price { font-size: 34px; font-weight: 700; line-height: 1; font-family: var(--font-jetbrains-mono, monospace); }
+
+/* ISO section body */
+.iso-body { display: flex; }
+.iso-stats { width: 224px; flex-shrink: 0; padding: 22px 24px; border-right: 1px solid rgba(255,255,255,0.05); }
+.iso-chart { flex: 1; min-width: 0; padding: 22px 20px 16px; }
+.chart-container { height: 260px; }
+
+/* Tablet ≤960px */
+@media (max-width: 960px) {
+  .page-header-inner { padding: 0 24px; }
+  .page-inner { padding: 36px 24px 0; }
+  .hero-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* Mobile ≤600px */
+@media (max-width: 600px) {
+  .page-header-inner { padding: 0 16px; }
+  .page-inner { padding: 24px 16px 0; }
+  .hero-grid { gap: 10px; margin-bottom: 40px; }
+  .hero-card { padding: 14px 16px; border-radius: 12px !important; }
+  .hero-card-price { font-size: 26px; }
+  .iso-body { flex-direction: column; }
+  .iso-stats {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    padding: 16px 18px;
+  }
+  .iso-chart { padding: 14px 12px 12px; }
+  .chart-container { height: 210px; }
+}
