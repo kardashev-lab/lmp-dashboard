@@ -12,12 +12,17 @@ const ISO_META = [
 
 async function buildHubData(iso: string, hubs: Hub[]): Promise<HubData[]> {
   const seen = new Set<string>();
-  const unique: Hub[] = [];
+  let unique: Hub[] = [];
   for (const h of hubs) {
     if (!seen.has(h.node_id)) {
       seen.add(h.node_id);
       unique.push(h);
     }
+  }
+  // SPP has 1500+ settlement locations — keep only hub nodes
+  if (iso === "SPP") {
+    const hubNodes = unique.filter(h => /hub/i.test(h.node_id));
+    if (hubNodes.length > 0) unique = hubNodes;
   }
   const limited = unique.slice(0, 6);
 
