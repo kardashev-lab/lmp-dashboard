@@ -1,8 +1,16 @@
-import { fetchHubs, fetchLMPSeries, type Hub, type HubData } from "@/lib/api";
+import {
+  fetchHubs, fetchLMPSeries,
+  fetchFuelMixLatest, fetchLoad, latestSystemLoadMW,
+  fetchNatGasLatest, fetchNatGas, fetchGasStorage,
+  fetchWeatherLatest, fetchCurtailmentSummary,
+  fetchReserveMargins, fetchBattery,
+  type Hub, type HubData,
+} from "@/lib/api";
 import ISOSection from "@/components/ISOSection";
 import FadeUp from "@/components/FadeUp";
 import TickerBar from "@/components/TickerBar";
 import LiveClock from "@/components/LiveClock";
+import MarketSignals from "@/components/MarketSignals";
 import { fmtPrice, priceColor } from "@/lib/format";
 
 const ISO_META = [
@@ -35,9 +43,33 @@ async function buildHubData(iso: string, hubs: Hub[]): Promise<HubData[]> {
 }
 
 export default async function HomePage() {
-  const allHubs = await Promise.all(ISO_META.map(({ iso }) => fetchHubs(iso)));
+  // All parallel — no sequential dependency
+  const [
+    allHubs,
+    allFuelMix,
+    allLoad,
+    natGasLatest,
+    gasStorage,
+    weatherLatest,
+    curtailmentSummary,
+    reserveMargins,
+    caIsoBattery,
+  ] = await Promise.all([
+    Promise.all(ISO_META.map(({ iso }) => fetchHubs(iso))),
+    Promise.all(ISO_META.map(({ iso }) => fetchFuelMixLatest(iso))),
+    Promise.all(ISO_META.map(({ iso }) => fetchLoad(iso, 2))),
+    fetchNatGasLatest(),
+    fetchGasStorage(8),
+    fetchWeatherLatest(),
+    fetchCurtailmentSummary(),
+    fetchReserveMargins(),
+    fetchBattery("CAISO", 2),
+  ]);
+
+  // Needs allHubs
   const allData = await Promise.all(ISO_META.map(({ iso }, i) => buildHubData(iso, allHubs[i])));
 
+  // Hero stats
   const heroStats = ISO_META.map(({ iso, label, region, color }, i) => {
     const hubs = allData[i];
     const firstHub = hubs[0];
@@ -51,7 +83,13 @@ export default async function HomePage() {
     const rtPrices = (firstHub?.rtPoints ?? []).map(p => p.lmp).filter((v): v is number => v != null);
     const high24 = rtPrices.length ? Math.max(...rtPrices) : null;
     const low24  = rtPrices.length ? Math.min(...rtPrices) : null;
-    return { iso, label, region, color, rt, da, spread, spreadPct, firstName, high24, low24 };
+    const load = latestSystemLoadMW(allLoad[i]);
+    const topFuel = allFuelMix[i]
+      .filter(p => (p.mw ?? 0) > 0)
+      .sort((a, b) => (b.mw ?? 0) - (a.mw ?? 0))[0] ?? null;
+    const totalMix = allFuelMix[i].reduce((s, p) => s + (p.mw ?? 0), 0);
+    const topFuelPct = topFuel && totalMix > 0 ? (topFuel.mw ?? 0) / totalMix * 100 : null;
+    return { iso, label, region, color, rt, da, spread, spreadPct, firstName, high24, low24, load, topFuel, topFuelPct };
   });
 
   return (
@@ -67,7 +105,9 @@ export default async function HomePage() {
               Kardashev Labs
             </a>
             <span style={{ color: "rgba(255,255,255,0.1)" }}>·</span>
-            <span style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.55)", letterSpacing: "0.04em" }}>LMP Dashboard</span>
+            <span style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.55)", letterSpacing: "0.04em" }}>
+              LMP Dashboard
+            </span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
             <LiveClock />
@@ -79,7 +119,7 @@ export default async function HomePage() {
         </div>
       </header>
 
-      {/* Ticker bar */}
+      {/* Ticker */}
       <TickerBar stats={heroStats} />
 
       <div className="page-inner">
@@ -96,7 +136,7 @@ export default async function HomePage() {
         {/* Hero cards */}
         <FadeUp delay={0.08}>
           <div className="hero-grid">
-            {heroStats.map(({ iso, label, region, color, rt, da, spread, spreadPct, firstName, high24, low24 }) => {
+            {heroStats.map(({ iso, label, region, color, rt, da, spread, spreadPct, firstName, high24, low24, load, topFuel, topFuelPct }) => {
               const rangePct = rt != null && high24 != null && low24 != null && high24 > low24
                 ? Math.max(2, Math.min(98, (rt - low24) / (high24 - low24) * 100))
                 : null;
@@ -112,17 +152,21 @@ export default async function HomePage() {
                   }}
                 >
                   {/* ISO badge */}
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 14 }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
                     <span style={{
                       display: "inline-flex", alignItems: "center", gap: 5,
                       fontSize: 10, fontWeight: 700, letterSpacing: "0.12em",
-                      color, background: `${color}12`,
-                      border: `1px solid ${color}28`,
+                      color, background: `${color}12`, border: `1px solid ${color}28`,
                       padding: "3px 8px", borderRadius: 999,
                     }}>
                       <span style={{ width: 5, height: 5, borderRadius: "50%", background: color, animation: "pulse-slow 2s ease-in-out infinite" }} />
                       {label}
                     </span>
+                    {load != null && (
+                      <span style={{ fontSize: 9, color: "rgba(255,255,255,0.2)", fontFamily: "var(--font-jetbrains-mono, monospace)" }}>
+                        {(load / 1000).toFixed(1)} GW
+                      </span>
+                    )}
                   </div>
 
                   {/* RT price */}
@@ -144,22 +188,14 @@ export default async function HomePage() {
                           borderRadius: 2,
                         }} />
                         <div style={{
-                          position: "absolute",
-                          left: `${rangePct}%`,
-                          top: "50%",
+                          position: "absolute", left: `${rangePct}%`, top: "50%",
                           transform: "translate(-50%, -50%)",
                           width: 7, height: 7, borderRadius: "50%",
-                          background: color,
-                          boxShadow: `0 0 5px ${color}99`,
+                          background: color, boxShadow: `0 0 5px ${color}99`,
                         }} />
                       </div>
                       {high24 != null && low24 != null && (
-                        <div style={{
-                          display: "flex", justifyContent: "space-between",
-                          marginTop: 4, fontSize: 9,
-                          color: "rgba(255,255,255,0.2)",
-                          fontFamily: "var(--font-jetbrains-mono, monospace)",
-                        }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4, fontSize: 9, color: "rgba(255,255,255,0.2)", fontFamily: "var(--font-jetbrains-mono, monospace)" }}>
                           <span>${fmtPrice(low24)} L</span>
                           <span>H ${fmtPrice(high24)}</span>
                         </div>
@@ -169,12 +205,7 @@ export default async function HomePage() {
 
                   {/* Spread */}
                   {spread != null ? (
-                    <div style={{
-                      fontSize: 11,
-                      fontFamily: "var(--font-jetbrains-mono, monospace)",
-                      color: spread > 0 ? "#fb7185" : "#34d399",
-                      marginBottom: 2,
-                    }}>
+                    <div style={{ fontSize: 11, fontFamily: "var(--font-jetbrains-mono, monospace)", color: spread > 0 ? "#fb7185" : "#34d399", marginBottom: 4 }}>
                       {spread > 0 ? "▲" : "▼"}&nbsp;
                       {spread > 0 ? "+" : ""}{fmtPrice(spread)}
                       {spreadPct != null && (
@@ -185,13 +216,20 @@ export default async function HomePage() {
                       <span style={{ color: "rgba(255,255,255,0.2)", marginLeft: 4, fontWeight: 400 }}>vs DA</span>
                     </div>
                   ) : da != null ? (
-                    <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", fontFamily: "var(--font-jetbrains-mono, monospace)", marginBottom: 2 }}>
+                    <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", fontFamily: "var(--font-jetbrains-mono, monospace)", marginBottom: 4 }}>
                       DA ${fmtPrice(da)}
                     </div>
                   ) : null}
 
+                  {/* Top fuel */}
+                  {topFuel && topFuelPct != null && (
+                    <div style={{ fontSize: 9, color: "rgba(255,255,255,0.2)", fontFamily: "var(--font-jetbrains-mono, monospace)", marginBottom: 4 }}>
+                      {topFuel.fuel_type} {topFuelPct.toFixed(0)}%
+                    </div>
+                  )}
+
                   {/* Region / node */}
-                  <div style={{ fontSize: 9, color: "rgba(255,255,255,0.18)", marginTop: 8, letterSpacing: "0.04em" }}>
+                  <div style={{ fontSize: 9, color: "rgba(255,255,255,0.15)", marginTop: 4, letterSpacing: "0.04em" }}>
                     {firstName ? `${firstName} · ` : ""}{region}
                   </div>
                 </div>
@@ -200,10 +238,30 @@ export default async function HomePage() {
           </div>
         </FadeUp>
 
+        {/* Market context signals */}
+        <FadeUp delay={0.1}>
+          <MarketSignals
+            natGas={natGasLatest}
+            gasStorage={gasStorage}
+            weather={weatherLatest}
+            curtailment={curtailmentSummary}
+            reserveMargins={reserveMargins}
+          />
+        </FadeUp>
+
         {/* ISO sections */}
         {ISO_META.map(({ iso, label, color }, i) => (
           <FadeUp key={iso} delay={0.04 * i}>
-            <ISOSection iso={iso} label={label} color={color} hubs={allData[i]} />
+            <ISOSection
+              iso={iso}
+              label={label}
+              color={color}
+              hubs={allData[i]}
+              fuelMix={allFuelMix[i]}
+              currentLoad={latestSystemLoadMW(allLoad[i])}
+              battery={iso === "CAISO" ? caIsoBattery : undefined}
+              reserveMargin={reserveMargins.find(r => r.iso === iso) ?? null}
+            />
           </FadeUp>
         ))}
       </div>
