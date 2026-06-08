@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import {
   fetchHubs, fetchLMPSeries,
   fetchFuelMixLatest, fetchLoad, latestSystemLoadMW,
@@ -43,30 +45,21 @@ async function buildHubData(iso: string, hubs: Hub[]): Promise<HubData[]> {
 }
 
 export default async function HomePage() {
-  // All parallel — no sequential dependency
-  const [
-    allHubs,
-    allFuelMix,
-    allLoad,
-    natGasLatest,
-    gasStorage,
-    weatherLatest,
-    curtailmentSummary,
-    reserveMargins,
-    caIsoBattery,
-  ] = await Promise.all([
-    Promise.all(ISO_META.map(({ iso }) => fetchHubs(iso))),
-    Promise.all(ISO_META.map(({ iso }) => fetchFuelMixLatest(iso))),
-    Promise.all(ISO_META.map(({ iso }) => fetchLoad(iso, 2))),
-    fetchNatGasLatest(),
-    fetchGasStorage(8),
-    fetchWeatherLatest(),
-    fetchCurtailmentSummary(),
-    fetchReserveMargins(),
-    fetchBattery("CAISO", 2),
-  ]);
+  // Stage 1: hubs + supplemental data in parallel (hubs needed for stage 2)
+  const [allHubs, allFuelMix, allLoad, natGasLatest, gasStorage, weatherLatest, curtailmentSummary, reserveMargins, caIsoBattery] =
+    await Promise.all([
+      Promise.all(ISO_META.map(({ iso }) => fetchHubs(iso))),
+      Promise.all(ISO_META.map(({ iso }) => fetchFuelMixLatest(iso))),
+      Promise.all(ISO_META.map(({ iso }) => fetchLoad(iso, 2))),
+      fetchNatGasLatest(),
+      fetchGasStorage(8),
+      fetchWeatherLatest(),
+      fetchCurtailmentSummary(),
+      fetchReserveMargins(),
+      fetchBattery("CAISO", 2),
+    ]);
 
-  // Needs allHubs
+  // Stage 2: LMP series (depends on allHubs, runs after to avoid overloading the API)
   const allData = await Promise.all(ISO_META.map(({ iso }, i) => buildHubData(iso, allHubs[i])));
 
   // Hero stats
