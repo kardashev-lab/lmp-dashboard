@@ -1,4 +1,4 @@
-const API = process.env.KARDASHEV_API_URL ?? "https://data.kardashevlabs.org";
+const API = (process.env.KARDASHEV_API_URL ?? "https://data.kardashevlabs.org").replace(/\/$/, "");
 
 // ── LMP ─────────────────────────────────────────────────────────────
 
