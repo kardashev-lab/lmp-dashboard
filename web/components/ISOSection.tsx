@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { HubData, FuelMixPoint, BatteryPoint, ReserveMarginPoint } from "@/lib/api";
-import { fmtPrice, fmtTimestamp, priceColor } from "@/lib/format";
+import { fmtPrice, fmtTimestamp, lmpBucket, spreadColor, fmtChange } from "@/lib/format";
 import LMPChart from "./LMPChart";
 import ComponentsBar from "./ComponentsBar";
 import FuelMixBar from "./FuelMixBar";
@@ -26,20 +26,14 @@ export default function ISOSection({
 
   if (!hubs.length) {
     return (
-      <div style={{
-        marginBottom: 32, padding: "24px 28px",
-        background: "rgba(255,255,255,0.02)",
-        border: "1px solid rgba(255,255,255,0.06)",
-        borderRadius: 18,
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", color, textTransform: "uppercase" }}>
-            {label}
-          </span>
+      <div className="iso-panel">
+        <div className="iso-panel-header">
+          <span className="iso-panel-title" style={{ color }}>{label}</span>
+          <span className="iso-panel-meta">Awaiting data</span>
         </div>
-        <p style={{ fontSize: 13, color: "rgba(255,255,255,0.2)" }}>
-          Awaiting first ingest — prices appear within the next 5-min interval.
-        </p>
+        <div style={{ padding: 24, color: "var(--text-muted)", fontSize: 13 }}>
+          Prices will appear after the next 5-minute ingest interval.
+        </div>
       </div>
     );
   }
@@ -51,131 +45,94 @@ export default function ISOSection({
   const rtLmp = latestRT?.lmp ?? null;
   const daLmp = latestDA?.lmp ?? null;
   const spread = rtLmp != null && daLmp != null ? rtLmp - daLmp : null;
+  const bucket = lmpBucket(rtLmp);
 
   const rtPrices = hub.rtPoints.map(p => p.lmp).filter((v): v is number => v != null);
   const high24 = rtPrices.length ? Math.max(...rtPrices) : null;
   const low24  = rtPrices.length ? Math.min(...rtPrices) : null;
   const avg24  = rtPrices.length ? rtPrices.reduce((a, b) => a + b, 0) / rtPrices.length : null;
 
-  // Battery latest
   const latestBattery = battery?.length ? battery[battery.length - 1] : null;
 
   return (
-    <div style={{
-      marginBottom: 32,
-      background: "rgba(255,255,255,0.02)",
-      border: "1px solid rgba(255,255,255,0.06)",
-      borderRadius: 18,
-      overflow: "hidden",
-    }}>
-      {/* Section header */}
-      <div style={{ padding: "14px 24px 0", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.16em", color, textTransform: "uppercase", flexShrink: 0 }}>
-            {label}
-          </span>
-          <span style={{ fontSize: 9, color: "rgba(255,255,255,0.2)", letterSpacing: "0.1em", fontFamily: "var(--font-jetbrains-mono, monospace)" }}>
-            {hubs.length} NODE{hubs.length !== 1 ? "S" : ""}
-          </span>
-          {currentLoad != null && (
-            <span style={{ fontSize: 9, color: "rgba(255,255,255,0.2)", letterSpacing: "0.1em", fontFamily: "var(--font-jetbrains-mono, monospace)" }}>
-              · LOAD {(currentLoad / 1000).toFixed(1)} GW
-            </span>
-          )}
-          <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.04)" }} />
-          <span style={{ fontSize: 9, color: "rgba(255,255,255,0.18)", letterSpacing: "0.1em", fontFamily: "var(--font-jetbrains-mono, monospace)" }}>
-            RT MARKET
-          </span>
-        </div>
-
-        {/* Hub tabs */}
-        <div style={{ display: "flex", gap: 4, overflowX: "auto", paddingBottom: 12 }}>
-          {hubs.map((h, i) => (
-            <button
-              key={h.node_id}
-              onClick={() => setIdx(i)}
-              style={{
-                padding: "4px 11px", borderRadius: 999, fontSize: 10,
-                fontWeight: idx === i ? 600 : 400,
-                border: idx === i ? `1px solid ${color}50` : "1px solid rgba(255,255,255,0.07)",
-                background: idx === i ? `${color}15` : "transparent",
-                color: idx === i ? color : "rgba(255,255,255,0.3)",
-                cursor: "pointer", whiteSpace: "nowrap", transition: "all 0.12s",
-                fontFamily: "var(--font-jetbrains-mono, monospace)",
-              }}
-            >
-              {h.node_name}
-            </button>
-          ))}
-        </div>
+    <div className="iso-panel">
+      <div className="iso-panel-header">
+        <span className="iso-panel-title" style={{ color }}>{label}</span>
+        <span className="iso-panel-meta">
+          {hubs.length} node{hubs.length !== 1 ? "s" : ""}
+          {currentLoad != null && ` · ${(currentLoad / 1000).toFixed(1)} GW load`}
+        </span>
       </div>
 
-      {/* Body */}
-      <div className="iso-body">
-        {/* Stats panel */}
-        <div className="iso-stats">
-          {/* RT price */}
-          <div style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 9, color: "rgba(255,255,255,0.22)", letterSpacing: "0.12em", marginBottom: 6, fontFamily: "var(--font-jetbrains-mono, monospace)" }}>
-              RT NOW
-            </div>
-            <div style={{ fontSize: 38, fontWeight: 700, lineHeight: 1, fontFamily: "var(--font-jetbrains-mono, monospace)", color: priceColor(rtLmp) }}>
-              {rtLmp != null ? `$${fmtPrice(rtLmp)}` : "—"}
-            </div>
-            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.18)", marginTop: 3, fontFamily: "var(--font-jetbrains-mono, monospace)" }}>/MWh</div>
+      <div className="iso-panel-body">
+        <aside className="iso-sidebar">
+          <div className="hub-select">
+            {hubs.map((h, i) => (
+              <button
+                key={h.node_id}
+                onClick={() => setIdx(i)}
+                className={`hub-pill${idx === i ? " active" : ""}`}
+                style={idx === i ? { background: `${color}18`, color, borderColor: `${color}40` } : undefined}
+              >
+                {h.node_name}
+              </button>
+            ))}
           </div>
 
-          {/* DA + spread */}
-          <div style={{ marginBottom: 14, paddingBottom: 14, borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 5 }}>
-              <span style={{ fontSize: 9, color: "rgba(255,255,255,0.22)", letterSpacing: "0.12em", fontFamily: "var(--font-jetbrains-mono, monospace)" }}>DA</span>
-              <span style={{ fontSize: 14, fontFamily: "var(--font-jetbrains-mono, monospace)", color: "rgba(255,255,255,0.5)" }}>
+          <div className="stat-hero">
+            <div className="stat-hero-label">Real-time LMP</div>
+            <div
+              className="stat-hero-price"
+              style={{ color: bucket.text, background: bucket.bg, borderRadius: 6, padding: "6px 10px", display: "inline-block" }}
+            >
+              {rtLmp != null ? `$${fmtPrice(rtLmp)}` : "—"}
+            </div>
+            <div className="stat-hero-unit">$/MWh · {bucket.label}</div>
+          </div>
+
+          <div className="stat-list">
+            <div className="stat-item">
+              <span className="stat-item-label">Day-ahead</span>
+              <span className="stat-item-value" style={{ color: "var(--text-secondary)" }}>
                 {daLmp != null ? `$${fmtPrice(daLmp)}` : "—"}
               </span>
             </div>
             {spread != null && (
-              <div style={{ fontSize: 11, textAlign: "right", fontFamily: "var(--font-jetbrains-mono, monospace)", color: spread > 0 ? "#fb7185" : "#34d399" }}>
-                {spread > 0 ? "▲" : "▼"} {spread > 0 ? "+" : ""}{fmtPrice(spread)} vs DA
+              <div className="stat-item">
+                <span className="stat-item-label">DART spread</span>
+                <span className="stat-item-value" style={{ color: spreadColor(spread) }}>
+                  {fmtChange(spread)}
+                </span>
               </div>
             )}
-          </div>
-
-          {/* 24h stats */}
-          <div style={{ marginBottom: 2 }}>
             {[
-              { label: "24H HIGH", value: high24, clr: "#ef4444" },
-              { label: "24H LOW",  value: low24,  clr: "#34d399" },
-              { label: "24H AVG",  value: avg24,  clr: "rgba(255,255,255,0.4)" },
+              { label: "24h high", value: high24, clr: "#f87171" },
+              { label: "24h low",  value: low24,  clr: "#4ade80" },
+              { label: "24h avg",  value: avg24,  clr: "var(--text-secondary)" },
             ].map(({ label: l, value, clr }) => (
-              <div key={l} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 7 }}>
-                <span style={{ fontSize: 9, color: "rgba(255,255,255,0.2)", letterSpacing: "0.1em", fontFamily: "var(--font-jetbrains-mono, monospace)" }}>{l}</span>
-                <span style={{ fontSize: 11, fontFamily: "var(--font-jetbrains-mono, monospace)", color: clr }}>
+              <div key={l} className="stat-item">
+                <span className="stat-item-label">{l}</span>
+                <span className="stat-item-value" style={{ color: clr }}>
                   {value != null ? `$${fmtPrice(value)}` : "—"}
                 </span>
               </div>
             ))}
           </div>
 
-          {/* LMP components */}
           <ComponentsBar point={latestRT} />
-
-          {/* Fuel mix */}
           {fuelMix.length > 0 && <FuelMixBar fuelMix={fuelMix} />}
 
-          {/* Battery (CAISO) */}
           {latestBattery && (
-            <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 14, marginTop: 8 }}>
-              <div style={{ fontSize: 9, color: "rgba(255,255,255,0.2)", letterSpacing: "0.1em", marginBottom: 8, fontFamily: "var(--font-jetbrains-mono, monospace)" }}>
-                BATTERY STORAGE
-              </div>
+            <div className="stat-section">
+              <div className="stat-section-title">Battery storage</div>
               {[
-                { label: "Discharge", value: latestBattery.mw_discharging, unit: "MW", color: "#34d399" },
-                { label: "Charging",  value: latestBattery.mw_charging,    unit: "MW", color: "#fb7185" },
-                { label: "State",     value: latestBattery.mwh_state,       unit: "MWh", color: "rgba(255,255,255,0.4)" },
+                { label: "Discharging", value: latestBattery.mw_discharging, unit: "MW", color: "#4ade80" },
+                { label: "Charging",    value: latestBattery.mw_charging,    unit: "MW", color: "#f87171" },
+                { label: "State",       value: latestBattery.mwh_state,       unit: "MWh", color: "var(--text-secondary)" },
               ].map(({ label: l, value, unit, color: c }) => value != null && (
-                <div key={l} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                  <span style={{ fontSize: 9, color: "rgba(255,255,255,0.25)" }}>{l}</span>
-                  <span style={{ fontSize: 11, fontFamily: "var(--font-jetbrains-mono, monospace)", color: c }}>
+                <div key={l} className="stat-item">
+                  <span className="stat-item-label">{l}</span>
+                  <span className="stat-item-value" style={{ color: c }}>
                     {value.toFixed(0)} {unit}
                   </span>
                 </div>
@@ -183,27 +140,23 @@ export default function ISOSection({
             </div>
           )}
 
-          {/* Reserve margin (PJM) */}
           {reserveMargin && (
-            <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 14, marginTop: 8 }}>
-              <div style={{ fontSize: 9, color: "rgba(255,255,255,0.2)", letterSpacing: "0.1em", marginBottom: 8, fontFamily: "var(--font-jetbrains-mono, monospace)" }}>
-                RESERVE MARGIN
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
-                <span style={{ fontSize: 9, color: "rgba(255,255,255,0.25)" }}>Actual</span>
-                <span style={{
-                  fontSize: 13, fontFamily: "var(--font-jetbrains-mono, monospace)", fontWeight: 600,
+            <div className="stat-section">
+              <div className="stat-section-title">Reserve margin</div>
+              <div className="stat-item">
+                <span className="stat-item-label">Actual</span>
+                <span className="stat-item-value" style={{
                   color: reserveMargin.actual_pct != null && reserveMargin.required_pct != null
-                    ? reserveMargin.actual_pct < reserveMargin.required_pct ? "#fb7185" : "#34d399"
-                    : "rgba(255,255,255,0.5)",
+                    ? reserveMargin.actual_pct < reserveMargin.required_pct ? "#f87171" : "#4ade80"
+                    : "var(--text-secondary)",
                 }}>
                   {reserveMargin.actual_pct != null ? `${reserveMargin.actual_pct.toFixed(1)}%` : "—"}
                 </span>
               </div>
               {reserveMargin.required_pct != null && (
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontSize: 9, color: "rgba(255,255,255,0.25)" }}>Required</span>
-                  <span style={{ fontSize: 11, fontFamily: "var(--font-jetbrains-mono, monospace)", color: "rgba(255,255,255,0.3)" }}>
+                <div className="stat-item">
+                  <span className="stat-item-label">Required</span>
+                  <span className="stat-item-value" style={{ color: "var(--text-muted)" }}>
                     {reserveMargin.required_pct.toFixed(1)}%
                   </span>
                 </div>
@@ -211,16 +164,14 @@ export default function ISOSection({
             </div>
           )}
 
-          {/* Timestamp */}
           {latestRT && (
-            <div style={{ marginTop: 14, fontSize: 9, color: "rgba(255,255,255,0.15)", fontFamily: "var(--font-jetbrains-mono, monospace)" }}>
-              {fmtTimestamp(latestRT.ts)}
+            <div style={{ marginTop: 14, fontSize: 11, color: "var(--text-muted)" }}>
+              Updated {fmtTimestamp(latestRT.ts)}
             </div>
           )}
-        </div>
+        </aside>
 
-        {/* Chart */}
-        <div className="iso-chart">
+        <div className="iso-main">
           <LMPChart rtPoints={hub.rtPoints} daPoints={hub.daPoints} color={color} />
         </div>
       </div>

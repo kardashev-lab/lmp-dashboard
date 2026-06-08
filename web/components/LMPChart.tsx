@@ -27,11 +27,8 @@ function buildChartData(rtPoints: LMPPoint[], daPoints: LMPPoint[]): ChartPoint[
   }
   for (const p of daPoints) {
     const existing = map.get(p.ts);
-    if (existing) {
-      existing.da = p.lmp;
-    } else {
-      map.set(p.ts, { ts: p.ts, rt: null, da: p.lmp });
-    }
+    if (existing) existing.da = p.lmp;
+    else map.set(p.ts, { ts: p.ts, rt: null, da: p.lmp });
   }
   return [...map.values()].sort((a, b) => a.ts.localeCompare(b.ts));
 }
@@ -46,30 +43,20 @@ function CustomTooltip({ active, payload, label }: {
   if (!entries.length) return null;
   return (
     <div style={{
-      background: "rgba(3,7,17,0.97)",
-      border: "1px solid rgba(255,255,255,0.09)",
-      borderRadius: 10,
+      background: "#1c2430",
+      border: "1px solid #2a3441",
+      borderRadius: 8,
       padding: "10px 14px",
-      backdropFilter: "blur(16px)",
+      boxShadow: "0 4px 12px rgba(0,0,0,0.4)",
     }}>
-      <p style={{
-        color: "rgba(255,255,255,0.35)", marginBottom: 7,
-        fontSize: 10, letterSpacing: "0.08em",
-        fontFamily: "var(--font-jetbrains-mono, monospace)",
-      }}>
-        {label ? fmtTime(label) : ""}
+      <p style={{ color: "#64748b", marginBottom: 8, fontSize: 11 }}>
+        {label ? `${fmtTime(label)} UTC` : ""}
       </p>
       {entries.map(p => (
-        <div key={p.name} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-          <span style={{ width: 6, height: 6, borderRadius: "50%", background: p.color, flexShrink: 0 }} />
-          <span style={{ color: "rgba(255,255,255,0.4)", minWidth: 28, fontSize: 10, fontFamily: "var(--font-jetbrains-mono, monospace)" }}>
-            {p.name}
-          </span>
-          <span style={{
-            color: "#fff",
-            fontFamily: "var(--font-jetbrains-mono, monospace)",
-            fontSize: 12, fontWeight: 600,
-          }}>
+        <div key={p.name} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
+          <span style={{ width: 8, height: 3, background: p.color, borderRadius: 1 }} />
+          <span style={{ color: "#94a3b8", minWidth: 24, fontSize: 12 }}>{p.name}</span>
+          <span style={{ color: "#e8edf4", fontFamily: "var(--font-mono)", fontSize: 13, fontWeight: 600 }}>
             ${fmtPrice(p.value)}
           </span>
         </div>
@@ -90,12 +77,8 @@ export default function LMPChart({ rtPoints, daPoints, color }: Props) {
 
   if (!data.length) {
     return (
-      <div className="chart-container" style={{
-        display: "flex", alignItems: "center", justifyContent: "center",
-        color: "rgba(255,255,255,0.15)", fontSize: 12,
-        fontFamily: "var(--font-jetbrains-mono, monospace)",
-      }}>
-        awaiting data — next 5-min interval
+      <div className="chart-container chart-empty">
+        Awaiting data — next 5-minute interval
       </div>
     );
   }
@@ -105,82 +88,60 @@ export default function LMPChart({ rtPoints, daPoints, color }: Props) {
 
   return (
     <div>
-      <div style={{ display: "flex", gap: 16, marginBottom: 10, fontSize: 10, color: "rgba(255,255,255,0.3)", fontFamily: "var(--font-jetbrains-mono, monospace)" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-          <span style={{ width: 16, height: 2, background: color, display: "inline-block", borderRadius: 1 }} />
-          RT
+      <div className="chart-legend">
+        <div className="chart-legend-item">
+          <span style={{ width: 18, height: 3, background: color, borderRadius: 1, display: "inline-block" }} />
+          Real-time
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-          <span style={{ width: 16, height: 0, display: "inline-block", borderTop: "2px dashed rgba(255,255,255,0.25)" }} />
-          DA
+        <div className="chart-legend-item">
+          <span style={{ width: 18, height: 0, display: "inline-block", borderTop: "2px dashed #64748b" }} />
+          Day-ahead
         </div>
       </div>
       <div className="chart-container">
         <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart data={data} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+          <ComposedChart data={data} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor={color} stopOpacity={0.18} />
+                <stop offset="5%" stopColor={color} stopOpacity={0.2} />
                 <stop offset="95%" stopColor={color} stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid
-              strokeDasharray="2 8"
-              stroke="rgba(255,255,255,0.035)"
-              vertical={false}
-            />
+            <CartesianGrid strokeDasharray="3 3" stroke="#1e2733" vertical={false} />
             <XAxis
               dataKey="ts"
               tickFormatter={fmtTime}
-              tick={{ fontSize: 9, fill: "rgba(255,255,255,0.18)", fontFamily: "var(--font-jetbrains-mono, monospace)" }}
-              axisLine={false}
+              tick={{ fontSize: 11, fill: "#64748b" }}
+              axisLine={{ stroke: "#2a3441" }}
               tickLine={false}
               interval="preserveStartEnd"
               tickMargin={8}
             />
             <YAxis
-              tick={{ fontSize: 9, fill: "rgba(255,255,255,0.18)", fontFamily: "var(--font-jetbrains-mono, monospace)" }}
+              tick={{ fontSize: 11, fill: "#64748b", fontFamily: "var(--font-mono)" }}
               axisLine={false}
               tickLine={false}
               tickFormatter={(v) => `$${fmtPrice(v)}`}
-              width={50}
+              width={56}
             />
-            <Tooltip content={<CustomTooltip />} cursor={{ stroke: "rgba(255,255,255,0.07)", strokeWidth: 1 }} />
-            {hasNeg && (
-              <ReferenceLine y={0} stroke="rgba(255,255,255,0.1)" strokeWidth={1} strokeDasharray="3 3" />
-            )}
-            {/* DA line */}
+            <Tooltip content={<CustomTooltip />} cursor={{ stroke: "#3d4f63", strokeWidth: 1 }} />
+            {hasNeg && <ReferenceLine y={0} stroke="#3d4f63" strokeWidth={1} strokeDasharray="4 4" />}
             <Line
-              type="monotone"
-              dataKey="da"
-              name="DA"
-              stroke="rgba(255,255,255,0.22)"
-              strokeWidth={1}
-              strokeDasharray="4 4"
-              dot={false}
-              connectNulls
-              activeDot={{ r: 3, fill: "rgba(255,255,255,0.5)", strokeWidth: 0 }}
+              type="monotone" dataKey="da" name="DA"
+              stroke="#64748b" strokeWidth={1.5} strokeDasharray="5 4"
+              dot={false} connectNulls
+              activeDot={{ r: 3, fill: "#94a3b8", strokeWidth: 0 }}
             />
-            {/* RT gradient fill */}
             <Area
-              type="monotone"
-              dataKey="rt"
-              fill={`url(#${gradId})`}
-              stroke="none"
-              dot={false}
-              connectNulls={false}
-              isAnimationActive={false}
+              type="monotone" dataKey="rt"
+              fill={`url(#${gradId})`} stroke="none"
+              dot={false} connectNulls={false} isAnimationActive={false}
             />
-            {/* RT line on top */}
             <Line
-              type="monotone"
-              dataKey="rt"
-              name="RT"
-              stroke={color}
-              strokeWidth={1.5}
-              dot={false}
-              connectNulls={false}
-              activeDot={{ r: 3, fill: color, strokeWidth: 0 }}
+              type="monotone" dataKey="rt" name="RT"
+              stroke={color} strokeWidth={2}
+              dot={false} connectNulls={false}
+              activeDot={{ r: 4, fill: color, strokeWidth: 0 }}
             />
           </ComposedChart>
         </ResponsiveContainer>

@@ -11,17 +11,10 @@ export default function LiveClock() {
         timeZone: "UTC", hour12: false,
       });
     setTime(fmt());
-    const id = setInterval(() => setTime(fmt()), 1000);
+    const id = setInterval(fmt, 1000);
     return () => clearInterval(id);
   }, []);
 
   if (!time) return null;
-  return (
-    <span style={{
-      fontFamily: "var(--font-jetbrains-mono, monospace)",
-      fontSize: 11, color: "rgba(255,255,255,0.3)", letterSpacing: "0.06em",
-    }}>
-      {time} UTC
-    </span>
-  );
+  return <>As of {time} UTC</>;
 }

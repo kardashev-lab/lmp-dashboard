@@ -3,23 +3,22 @@ export const dynamic = "force-dynamic";
 import {
   fetchHubs, fetchLMPSeries,
   fetchFuelMixLatest, fetchLoad, latestSystemLoadMW,
-  fetchNatGasLatest, fetchNatGas, fetchGasStorage,
+  fetchNatGasLatest, fetchGasStorage,
   fetchWeatherLatest, fetchCurtailmentSummary,
   fetchReserveMargins, fetchBattery,
   type Hub, type HubData,
 } from "@/lib/api";
-import ISOSection from "@/components/ISOSection";
-import FadeUp from "@/components/FadeUp";
-import TickerBar from "@/components/TickerBar";
+import OverviewCards from "@/components/OverviewCards";
+import PriceLegend from "@/components/PriceLegend";
+import DashboardShell from "@/components/DashboardShell";
 import LiveClock from "@/components/LiveClock";
 import MarketSignals from "@/components/MarketSignals";
-import { fmtPrice, priceColor } from "@/lib/format";
 
 const ISO_META = [
   { iso: "NYISO", label: "NYISO", region: "New York",               color: "#a78bfa" },
-  { iso: "PJM",   label: "PJM",   region: "Mid-Atlantic & Midwest", color: "#38bdf8" },
-  { iso: "CAISO", label: "CAISO", region: "California",             color: "#fb7185" },
-  { iso: "SPP",   label: "SPP",   region: "Central US",             color: "#34d399" },
+  { iso: "PJM",   label: "PJM",   region: "Mid-Atlantic",           color: "#60a5fa" },
+  { iso: "CAISO", label: "CAISO", region: "California",             color: "#f87171" },
+  { iso: "SPP",   label: "SPP",   region: "Central US",             color: "#4ade80" },
 ];
 
 async function buildHubData(iso: string, hubs: Hub[]): Promise<HubData[]> {
@@ -45,7 +44,6 @@ async function buildHubData(iso: string, hubs: Hub[]): Promise<HubData[]> {
 }
 
 export default async function HomePage() {
-  // Stage 1: hubs + supplemental data in parallel (hubs needed for stage 2)
   const [allHubs, allFuelMix, allLoad, natGasLatest, gasStorage, weatherLatest, curtailmentSummary, reserveMargins, caIsoBattery] =
     await Promise.all([
       Promise.all(ISO_META.map(({ iso }) => fetchHubs(iso))),
@@ -59,11 +57,9 @@ export default async function HomePage() {
       fetchBattery("CAISO", 2),
     ]);
 
-  // Stage 2: LMP series (depends on allHubs, runs after to avoid overloading the API)
   const allData = await Promise.all(ISO_META.map(({ iso }, i) => buildHubData(iso, allHubs[i])));
 
-  // Hero stats
-  const heroStats = ISO_META.map(({ iso, label, region, color }, i) => {
+  const overviewStats = ISO_META.map(({ iso, label, region, color }, i) => {
     const hubs = allData[i];
     const firstHub = hubs[0];
     const latestRT = firstHub?.rtPoints[firstHub.rtPoints.length - 1] ?? null;
@@ -77,187 +73,63 @@ export default async function HomePage() {
     const high24 = rtPrices.length ? Math.max(...rtPrices) : null;
     const low24  = rtPrices.length ? Math.min(...rtPrices) : null;
     const load = latestSystemLoadMW(allLoad[i]);
-    const topFuel = allFuelMix[i]
-      .filter(p => (p.mw ?? 0) > 0)
-      .sort((a, b) => (b.mw ?? 0) - (a.mw ?? 0))[0] ?? null;
-    const totalMix = allFuelMix[i].reduce((s, p) => s + (p.mw ?? 0), 0);
-    const topFuelPct = topFuel && totalMix > 0 ? (topFuel.mw ?? 0) / totalMix * 100 : null;
-    return { iso, label, region, color, rt, da, spread, spreadPct, firstName, high24, low24, load, topFuel, topFuelPct };
+    return { iso, label, region, color, rt, da, spread, spreadPct, firstName, high24, low24, load };
   });
 
+  const isoConfigs = ISO_META.map(({ iso, label, color }, i) => ({
+    iso,
+    label,
+    color,
+    hubs: allData[i],
+    fuelMix: allFuelMix[i],
+    currentLoad: latestSystemLoadMW(allLoad[i]),
+    battery: iso === "CAISO" ? caIsoBattery : undefined,
+    reserveMargin: reserveMargins.find(r => r.iso === iso) ?? null,
+  }));
+
   return (
-    <main style={{ minHeight: "100vh", paddingBottom: 80 }}>
-      {/* Header */}
-      <header style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-        <div className="page-header-inner">
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <a
-              href="https://www.kardashevlabs.org"
-              style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.15em", color: "rgba(255,255,255,0.22)", textDecoration: "none", textTransform: "uppercase" }}
-            >
-              Kardashev Labs
-            </a>
-            <span style={{ color: "rgba(255,255,255,0.1)" }}>·</span>
-            <span style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.55)", letterSpacing: "0.04em" }}>
-              LMP Dashboard
-            </span>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-            <LiveClock />
-            <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 10, color: "rgba(255,255,255,0.22)", fontFamily: "var(--font-jetbrains-mono, monospace)", letterSpacing: "0.08em" }}>
-              <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#34d399", display: "inline-block", animation: "pulse-slow 2s ease-in-out infinite" }} />
-              LIVE · 5-MIN
-            </div>
-          </div>
+    <div className="dashboard">
+      <header className="dash-header">
+        <div className="dash-header-left">
+          <a href="https://www.kardashevlabs.org" className="dash-brand">Kardashev Labs</a>
+          <h1 className="dash-title">LMP Dashboard</h1>
+          <p className="dash-subtitle">
+            Real-time locational marginal prices · NYISO, PJM, CAISO, SPP
+          </p>
+        </div>
+        <div className="dash-header-right">
+          <span className="dash-clock"><LiveClock /></span>
+          <span className="dash-live">
+            <span className="dash-live-dot" />
+            Live · 5 min
+          </span>
         </div>
       </header>
 
-      {/* Ticker */}
-      <TickerBar stats={heroStats} />
-
-      <div className="page-inner">
-        {/* Hero title */}
-        <FadeUp>
-          <h1 style={{ fontSize: 26, fontWeight: 700, marginBottom: 5, letterSpacing: "-0.02em" }}>
-            Locational Marginal Prices
-          </h1>
-          <p style={{ fontSize: 13, color: "rgba(255,255,255,0.35)", marginBottom: 36 }}>
-            Real-time spot prices across major US grid operators · energy + congestion + loss
-          </p>
-        </FadeUp>
-
-        {/* Hero cards */}
-        <FadeUp delay={0.08}>
-          <div className="hero-grid">
-            {heroStats.map(({ iso, label, region, color, rt, da, spread, spreadPct, firstName, high24, low24, load, topFuel, topFuelPct }) => {
-              const rangePct = rt != null && high24 != null && low24 != null && high24 > low24
-                ? Math.max(2, Math.min(98, (rt - low24) / (high24 - low24) * 100))
-                : null;
-              return (
-                <div
-                  key={iso}
-                  className="hero-card"
-                  style={{
-                    background: "rgba(255,255,255,0.025)",
-                    border: "1px solid rgba(255,255,255,0.07)",
-                    borderTop: `2px solid ${color}40`,
-                    borderRadius: 16,
-                  }}
-                >
-                  {/* ISO badge */}
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-                    <span style={{
-                      display: "inline-flex", alignItems: "center", gap: 5,
-                      fontSize: 10, fontWeight: 700, letterSpacing: "0.12em",
-                      color, background: `${color}12`, border: `1px solid ${color}28`,
-                      padding: "3px 8px", borderRadius: 999,
-                    }}>
-                      <span style={{ width: 5, height: 5, borderRadius: "50%", background: color, animation: "pulse-slow 2s ease-in-out infinite" }} />
-                      {label}
-                    </span>
-                    {load != null && (
-                      <span style={{ fontSize: 9, color: "rgba(255,255,255,0.2)", fontFamily: "var(--font-jetbrains-mono, monospace)" }}>
-                        {(load / 1000).toFixed(1)} GW
-                      </span>
-                    )}
-                  </div>
-
-                  {/* RT price */}
-                  <div className="hero-card-price" style={{ color: priceColor(rt), marginBottom: 3 }}>
-                    {rt != null ? `$${fmtPrice(rt)}` : "—"}
-                  </div>
-                  <div style={{ fontSize: 10, color: "rgba(255,255,255,0.18)", marginBottom: 10, fontFamily: "var(--font-jetbrains-mono, monospace)" }}>
-                    /MWh · RT
-                  </div>
-
-                  {/* Range bar */}
-                  {rangePct != null && (
-                    <div style={{ marginBottom: 10 }}>
-                      <div style={{ height: 3, background: "rgba(255,255,255,0.06)", borderRadius: 2, position: "relative" }}>
-                        <div style={{
-                          position: "absolute", left: 0, top: 0,
-                          width: `${rangePct}%`, height: "100%",
-                          background: `linear-gradient(90deg, ${color}40, ${color})`,
-                          borderRadius: 2,
-                        }} />
-                        <div style={{
-                          position: "absolute", left: `${rangePct}%`, top: "50%",
-                          transform: "translate(-50%, -50%)",
-                          width: 7, height: 7, borderRadius: "50%",
-                          background: color, boxShadow: `0 0 5px ${color}99`,
-                        }} />
-                      </div>
-                      {high24 != null && low24 != null && (
-                        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4, fontSize: 9, color: "rgba(255,255,255,0.2)", fontFamily: "var(--font-jetbrains-mono, monospace)" }}>
-                          <span>${fmtPrice(low24)} L</span>
-                          <span>H ${fmtPrice(high24)}</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Spread */}
-                  {spread != null ? (
-                    <div style={{ fontSize: 11, fontFamily: "var(--font-jetbrains-mono, monospace)", color: spread > 0 ? "#fb7185" : "#34d399", marginBottom: 4 }}>
-                      {spread > 0 ? "▲" : "▼"}&nbsp;
-                      {spread > 0 ? "+" : ""}{fmtPrice(spread)}
-                      {spreadPct != null && (
-                        <span style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", marginLeft: 4 }}>
-                          ({spreadPct > 0 ? "+" : ""}{spreadPct.toFixed(1)}%)
-                        </span>
-                      )}
-                      <span style={{ color: "rgba(255,255,255,0.2)", marginLeft: 4, fontWeight: 400 }}>vs DA</span>
-                    </div>
-                  ) : da != null ? (
-                    <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", fontFamily: "var(--font-jetbrains-mono, monospace)", marginBottom: 4 }}>
-                      DA ${fmtPrice(da)}
-                    </div>
-                  ) : null}
-
-                  {/* Top fuel */}
-                  {topFuel && topFuelPct != null && (
-                    <div style={{ fontSize: 9, color: "rgba(255,255,255,0.2)", fontFamily: "var(--font-jetbrains-mono, monospace)", marginBottom: 4 }}>
-                      {topFuel.fuel_type} {topFuelPct.toFixed(0)}%
-                    </div>
-                  )}
-
-                  {/* Region / node */}
-                  <div style={{ fontSize: 9, color: "rgba(255,255,255,0.15)", marginTop: 4, letterSpacing: "0.04em" }}>
-                    {firstName ? `${firstName} · ` : ""}{region}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </FadeUp>
-
-        {/* Market context signals */}
-        <FadeUp delay={0.1}>
-          <MarketSignals
-            natGas={natGasLatest}
-            gasStorage={gasStorage}
-            weather={weatherLatest}
-            curtailment={curtailmentSummary}
-            reserveMargins={reserveMargins}
-          />
-        </FadeUp>
-
-        {/* ISO sections */}
-        {ISO_META.map(({ iso, label, color }, i) => (
-          <FadeUp key={iso} delay={0.04 * i}>
-            <ISOSection
-              iso={iso}
-              label={label}
-              color={color}
-              hubs={allData[i]}
-              fuelMix={allFuelMix[i]}
-              currentLoad={latestSystemLoadMW(allLoad[i])}
-              battery={iso === "CAISO" ? caIsoBattery : undefined}
-              reserveMargin={reserveMargins.find(r => r.iso === iso) ?? null}
-            />
-          </FadeUp>
-        ))}
+      <div className="section-head">
+        <span className="section-title">Market overview</span>
+        <span className="section-desc">Primary hub RT LMP per ISO</span>
       </div>
-    </main>
+      <OverviewCards stats={overviewStats} />
+      <PriceLegend />
+
+      <div className="section-head">
+        <span className="section-title">Market context</span>
+        <span className="section-desc">Fundamentals affecting wholesale prices</span>
+      </div>
+      <MarketSignals
+        natGas={natGasLatest}
+        gasStorage={gasStorage}
+        weather={weatherLatest}
+        curtailment={curtailmentSummary}
+        reserveMargins={reserveMargins}
+      />
+
+      <div className="section-head">
+        <span className="section-title">ISO detail</span>
+        <span className="section-desc">RT &amp; day-ahead series by pricing node</span>
+      </div>
+      <DashboardShell isos={isoConfigs} />
+    </div>
   );
 }
