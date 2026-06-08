@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import {
   ComposedChart,
   Area,
@@ -71,9 +72,25 @@ type Props = {
   color: string;
 };
 
+function useChartInsets() {
+  const [insets, setInsets] = useState({ left: 4, yWidth: 56 });
+  useEffect(() => {
+    const update = () => {
+      setInsets(
+        window.innerWidth < 768 ? { left: 12, yWidth: 72 } : { left: 4, yWidth: 56 },
+      );
+    };
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+  return insets;
+}
+
 export default function LMPChart({ rtPoints, daPoints, color }: Props) {
   const data = buildChartData(rtPoints, daPoints);
   const gradId = `grad-${color.replace("#", "")}`;
+  const { left, yWidth } = useChartInsets();
 
   if (!data.length) {
     return (
@@ -100,7 +117,7 @@ export default function LMPChart({ rtPoints, daPoints, color }: Props) {
       </div>
       <div className="chart-container">
         <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart data={data} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+          <ComposedChart data={data} margin={{ top: 8, right: 12, left, bottom: 0 }}>
             <defs>
               <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor={color} stopOpacity={0.2} />
@@ -122,7 +139,7 @@ export default function LMPChart({ rtPoints, daPoints, color }: Props) {
               axisLine={false}
               tickLine={false}
               tickFormatter={(v) => `$${fmtPrice(v)}`}
-              width={56}
+              width={yWidth}
             />
             <Tooltip content={<CustomTooltip />} cursor={{ stroke: "#3d4f63", strokeWidth: 1 }} />
             {hasNeg && <ReferenceLine y={0} stroke="#3d4f63" strokeWidth={1} strokeDasharray="4 4" />}
