@@ -25,6 +25,8 @@ export type HubData = {
   node_name: string;
   rtPoints: LMPPoint[];
   daPoints: LMPPoint[];
+  /** False when series data hasn't been fetched yet (lazy-loaded client-side). */
+  loaded: boolean;
 };
 
 // ── Fuel mix ─────────────────────────────────────────────────────────
@@ -117,6 +119,18 @@ async function apiFetch<T>(path: string, revalidate = 300): Promise<T | null> {
     return res.json() as Promise<T>;
   } catch {
     return null;
+  }
+}
+
+// ── Health ───────────────────────────────────────────────────────────
+
+/** True when the upstream data API is reachable. */
+export async function checkApiHealth(): Promise<boolean> {
+  try {
+    const res = await fetch(`${API}/health`, { next: { revalidate: 60 } });
+    return res.ok;
+  } catch {
+    return false;
   }
 }
 

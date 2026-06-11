@@ -114,6 +114,40 @@ body {
   50% { opacity: 0.4; }
 }
 
+/* ── API status banner ─────────────────────────────────── */
+.api-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 18px;
+  padding: 10px 14px;
+  border: 1px solid rgba(248, 113, 113, 0.35);
+  border-radius: 8px;
+  background: rgba(248, 113, 113, 0.08);
+  color: #fca5a5;
+  font-size: 12.5px;
+}
+
+.api-banner-dot {
+  flex-shrink: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #f87171;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+/* ── Chart lazy-load placeholder ────────────────────────── */
+.chart-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 220px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
 /* ── Section headings ──────────────────────────────────── */
 .section-head {
   display: flex;

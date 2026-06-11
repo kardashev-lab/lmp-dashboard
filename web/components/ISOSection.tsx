@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import type { HubData, FuelMixPoint, BatteryPoint, ReserveMarginPoint } from "@/lib/api";
+import { useEffect, useRef, useState } from "react";
+import type { HubData, LMPPoint, FuelMixPoint, BatteryPoint, ReserveMarginPoint } from "@/lib/api";
 import { fmtPrice, fmtTimestamp, lmpBucket, spreadColor, fmtChange } from "@/lib/format";
 import LMPChart from "./LMPChart";
 import ComponentsBar from "./ComponentsBar";
@@ -18,11 +18,38 @@ type Props = {
   reserveMargin?: ReserveMarginPoint | null;
 };
 
+type Series = { rtPoints: LMPPoint[]; daPoints: LMPPoint[] };
+
 export default function ISOSection({
-  iso: _iso, label, color, hubs,
+  iso, label, color, hubs,
   fuelMix = [], currentLoad, battery, reserveMargin,
 }: Props) {
   const [idx, setIdx] = useState(0);
+  // Series for hubs that weren't fetched during SSR, loaded on selection.
+  const [lazySeries, setLazySeries] = useState<Record<string, Series>>({});
+  const [seriesLoading, setSeriesLoading] = useState(false);
+  const pending = useRef<string | null>(null);
+
+  const selected = hubs[Math.min(idx, Math.max(hubs.length - 1, 0))];
+  const needsFetch = selected && !selected.loaded && !lazySeries[selected.node_id];
+
+  useEffect(() => {
+    if (!needsFetch || pending.current === selected.node_id) return;
+    pending.current = selected.node_id;
+    setSeriesLoading(true);
+    fetch(`/api/lmp?iso=${iso}&node_id=${encodeURIComponent(selected.node_id)}`)
+      .then(res => (res.ok ? res.json() : null))
+      .then((data: Series | null) => {
+        if (data) setLazySeries(prev => ({ ...prev, [selected.node_id]: data }));
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (pending.current === selected.node_id) {
+          pending.current = null;
+          setSeriesLoading(false);
+        }
+      });
+  }, [needsFetch, selected, iso]);
 
   if (!hubs.length) {
     return (
@@ -38,7 +65,11 @@ export default function ISOSection({
     );
   }
 
-  const hub = hubs[Math.min(idx, hubs.length - 1)];
+  const baseHub = hubs[Math.min(idx, hubs.length - 1)];
+  const lazy = lazySeries[baseHub.node_id];
+  const hub: HubData = baseHub.loaded || !lazy
+    ? baseHub
+    : { ...baseHub, rtPoints: lazy.rtPoints, daPoints: lazy.daPoints, loaded: true };
   const latestRT = hub.rtPoints[hub.rtPoints.length - 1] ?? null;
   const latestDA = hub.daPoints[hub.daPoints.length - 1] ?? null;
 
@@ -172,7 +203,11 @@ export default function ISOSection({
         </aside>
 
         <div className="iso-main">
-          <LMPChart rtPoints={hub.rtPoints} daPoints={hub.daPoints} color={color} />
+          {seriesLoading && !hub.rtPoints.length ? (
+            <div className="chart-loading">Loading {hub.node_name}…</div>
+          ) : (
+            <LMPChart rtPoints={hub.rtPoints} daPoints={hub.daPoints} color={color} />
+          )}
         </div>
       </div>
     </div>

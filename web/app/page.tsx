@@ -1,6 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import {
+  checkApiHealth,
   fetchHubs, fetchLMPSeries,
   fetchFuelMixLatest, fetchLoad, latestSystemLoadMW,
   fetchNatGasLatest, fetchGasStorage,
@@ -21,6 +22,11 @@ const ISO_META = [
   { iso: "SPP",   label: "SPP",   region: "Central US",             color: "#4ade80" },
 ];
 
+/**
+ * Fetch series data for the primary (first) hub only; the rest are returned
+ * as unloaded placeholders that the client lazy-loads on selection. This
+ * keeps the SSR fan-out at 2 LMP calls per ISO instead of 12.
+ */
 async function buildHubData(iso: string, hubs: Hub[]): Promise<HubData[]> {
   const seen = new Set<string>();
   let unique: Hub[] = [];
@@ -33,19 +39,22 @@ async function buildHubData(iso: string, hubs: Hub[]): Promise<HubData[]> {
   }
   const limited = unique.slice(0, 6);
   return Promise.all(
-    limited.map(async (hub) => {
+    limited.map(async (hub, i) => {
+      const base = { node_id: hub.node_id, node_name: hub.node_name ?? hub.node_id };
+      if (i > 0) return { ...base, rtPoints: [], daPoints: [], loaded: false };
       const [rtPoints, daPoints] = await Promise.all([
         fetchLMPSeries(iso, hub.node_id, "RT", 300),
         fetchLMPSeries(iso, hub.node_id, "DA", 48),
       ]);
-      return { node_id: hub.node_id, node_name: hub.node_name ?? hub.node_id, rtPoints, daPoints };
+      return { ...base, rtPoints, daPoints, loaded: true };
     })
   );
 }
 
 export default async function HomePage() {
-  const [allHubs, allFuelMix, allLoad, natGasLatest, gasStorage, weatherLatest, curtailmentSummary, reserveMargins, caIsoBattery] =
+  const [apiHealthy, allHubs, allFuelMix, allLoad, natGasLatest, gasStorage, weatherLatest, curtailmentSummary, reserveMargins, caIsoBattery] =
     await Promise.all([
+      checkApiHealth(),
       Promise.all(ISO_META.map(({ iso }) => fetchHubs(iso))),
       Promise.all(ISO_META.map(({ iso }) => fetchFuelMixLatest(iso))),
       Promise.all(ISO_META.map(({ iso }) => fetchLoad(iso, 2))),
@@ -105,6 +114,14 @@ export default async function HomePage() {
           </span>
         </div>
       </header>
+
+      {!apiHealthy && (
+        <div className="api-banner" role="alert">
+          <span className="api-banner-dot" />
+          Data API unavailable — showing cached values where possible. Live
+          prices will resume automatically once the API is reachable.
+        </div>
+      )}
 
       <div className="section-head">
         <span className="section-title">Market overview</span>
