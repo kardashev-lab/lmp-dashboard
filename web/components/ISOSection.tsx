@@ -206,7 +206,7 @@ export default function ISOSection({
           {seriesLoading && !hub.rtPoints.length ? (
             <div className="chart-loading">Loading {hub.node_name}…</div>
           ) : (
-            <LMPChart rtPoints={hub.rtPoints} daPoints={hub.daPoints} color={color} />
+            <LMPChart rtPoints={hub.rtPoints} daPoints={hub.daPoints} color={color} nodeName={hub.node_name} />
           )}
         </div>
       </div>

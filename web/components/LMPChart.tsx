@@ -70,6 +70,8 @@ type Props = {
   rtPoints: LMPPoint[];
   daPoints: LMPPoint[];
   color: string;
+  /** Hub name used to build the screen-reader description of the chart. */
+  nodeName?: string;
 };
 
 function useChartInsets() {
@@ -87,10 +89,16 @@ function useChartInsets() {
   return insets;
 }
 
-export default function LMPChart({ rtPoints, daPoints, color }: Props) {
+export default function LMPChart({ rtPoints, daPoints, color, nodeName }: Props) {
   const data = buildChartData(rtPoints, daPoints);
   const gradId = `grad-${color.replace("#", "")}`;
   const { left, yWidth } = useChartInsets();
+
+  const latestRt = [...rtPoints].reverse().find(p => p.lmp != null)?.lmp ?? null;
+  const chartLabel = [
+    nodeName ? `${nodeName} real-time and day-ahead price chart.` : "Real-time and day-ahead price chart.",
+    latestRt != null ? `Latest real-time price $${fmtPrice(latestRt)} per megawatt-hour.` : null,
+  ].filter(Boolean).join(" ");
 
   if (!data.length) {
     return (
@@ -115,7 +123,7 @@ export default function LMPChart({ rtPoints, daPoints, color }: Props) {
           Day-ahead
         </div>
       </div>
-      <div className="chart-container">
+      <div className="chart-container" role="img" aria-label={chartLabel}>
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={data} margin={{ top: 8, right: 12, left, bottom: 0 }}>
             <defs>
