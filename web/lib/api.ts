@@ -108,14 +108,6 @@ export type ReserveMarginPoint = {
   peak_mw: number | null;
 };
 
-export type GenForecastPoint = {
-  ts: string;
-  iso: string;
-  fuel_type: string;
-  mw_actual: number | null;
-  mw_potential: number | null;
-};
-
 // ── Core fetch ────────────────────────────────────────────────────────
 
 async function apiFetch<T>(path: string, revalidate = 300): Promise<T | null> {
@@ -218,9 +210,4 @@ export async function fetchBattery(iso = "CAISO", hours = 2): Promise<BatteryPoi
 export async function fetchReserveMargins(): Promise<ReserveMarginPoint[]> {
   const data = await apiFetch<ReserveMarginPoint[]>("/generation/reserve-margins", 3600);
   return data ?? [];
-}
-
-export async function fetchWindSolar(iso: string, hours = 6): Promise<GenForecastPoint[]> {
-  const data = await apiFetch<GenForecastPoint[]>(`/generation/wind-solar?iso=${iso}&hours=${hours}&limit=500`, 300);
-  return (data ?? []).reverse();
 }
