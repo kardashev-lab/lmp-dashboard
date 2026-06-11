@@ -114,7 +114,14 @@ export default function ISOSection({
             <div className="stat-hero-label">Real-time LMP</div>
             <div
               className="stat-hero-price"
-              style={{ color: bucket.text, background: bucket.bg, borderRadius: 6, padding: "6px 10px", display: "inline-block" }}
+              style={{
+                color: bucket.text,
+                background: `${bucket.bg}2e`,
+                boxShadow: `inset 0 0 0 1px ${bucket.bg}59`,
+                borderRadius: 8,
+                padding: "8px 12px",
+                display: "inline-block",
+              }}
             >
               {rtLmp != null ? `$${fmtPrice(rtLmp)}` : "—"}
             </div>

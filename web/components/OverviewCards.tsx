@@ -43,12 +43,18 @@ export default function OverviewCards({ stats }: { stats: OverviewStat[] }) {
 
             <div
               className="overview-price-badge"
-              style={{ background: bucket.bg, color: bucket.text }}
+              style={{
+                background: `${bucket.bg}2e`,
+                boxShadow: `inset 0 0 0 1px ${bucket.bg}59`,
+                color: bucket.text,
+              }}
             >
               <span className="overview-price">
                 {rt != null ? `$${fmtPrice(rt)}` : "—"}
               </span>
-              <span className="overview-price-unit">/MWh RT</span>
+              <span className="overview-price-unit">
+                {rt != null ? "/MWh RT" : "RT pending"}
+              </span>
             </div>
 
             {rangePct != null && high24 != null && low24 != null && (
