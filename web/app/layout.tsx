@@ -19,20 +19,20 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://lmp.kardashevlabs.o
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
-  title: "LMP Dashboard — Kardashev Labs",
+  title: "LMP Dashboard | Kardashev Labs",
   description:
-    "Real-time locational marginal prices across NYISO, PJM, CAISO, and SPP — energy, congestion, and loss components.",
+    "Real-time locational marginal prices across NYISO, PJM, CAISO, and SPP: energy, congestion, and loss components.",
   openGraph: {
     type: "website",
     locale: "en_US",
-    title: "LMP Dashboard — Kardashev Labs",
+    title: "LMP Dashboard | Kardashev Labs",
     description: "Electricity spot prices across major US grid operators, updated every 5 minutes.",
     url: siteUrl,
     siteName: "Kardashev Labs",
   },
   twitter: {
     card: "summary_large_image",
-    title: "LMP Dashboard — Kardashev Labs",
+    title: "LMP Dashboard | Kardashev Labs",
     description: "Electricity spot prices across major US grid operators, updated every 5 minutes.",
   },
 };

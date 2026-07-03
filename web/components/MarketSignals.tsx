@@ -62,7 +62,7 @@ function GasPanel({ natGas, storage }: { natGas: NatGasPrice[]; storage: GasStor
         </>
       )}
       {!henry && !storageCurrent && (
-        <p className="signal-empty">No prices yet — first ingest runs daily at 06:00 UTC</p>
+        <p className="signal-empty">No prices yet. First ingest runs daily at 06:00 UTC.</p>
       )}
     </div>
   );
@@ -87,7 +87,7 @@ function WeatherPanel({ weather }: { weather: TempPoint[] }) {
     return (
       <div className="signal-card">
         <div className="signal-card-title">Temperatures</div>
-        <p className="signal-empty">No readings yet — updates hourly</p>
+        <p className="signal-empty">No readings yet. Updates hourly.</p>
       </div>
     );
   }
@@ -141,7 +141,7 @@ function CurtailmentPanel({
     return (
       <div className="signal-card">
         <div className="signal-card-title">Curtailment & reserves</div>
-        <p className="signal-empty">No data yet — first ingest runs daily at 06:00 UTC</p>
+        <p className="signal-empty">No data yet. First ingest runs daily at 06:00 UTC.</p>
       </div>
     );
   }

@@ -1,12 +1,12 @@
 /** PJM / industry-standard LMP price buckets (USD/MWh) */
 export const LMP_BUCKETS = [
   { label: "< $10",    min: -Infinity, max: 10,   bg: "#1b4332", text: "#95d5b2" },
-  { label: "$10–20",  min: 10,        max: 20,   bg: "#2d6a4f", text: "#b7e4c7" },
-  { label: "$20–40",  min: 20,        max: 40,   bg: "#40916c", text: "#d8f3dc" },
-  { label: "$40–70",  min: 40,        max: 70,   bg: "#b08928", text: "#fff3cd" },
-  { label: "$70–100", min: 70,        max: 100,  bg: "#e07b39", text: "#fff" },
-  { label: "$100–200",min: 100,       max: 200,  bg: "#c1121f", text: "#fff" },
-  { label: "$200–500",min: 200,       max: 500,  bg: "#7b2d8e", text: "#f3e8ff" },
+  { label: "$10-20",  min: 10,        max: 20,   bg: "#2d6a4f", text: "#b7e4c7" },
+  { label: "$20-40",  min: 20,        max: 40,   bg: "#40916c", text: "#d8f3dc" },
+  { label: "$40-70",  min: 40,        max: 70,   bg: "#b08928", text: "#fff3cd" },
+  { label: "$70-100", min: 70,        max: 100,  bg: "#e07b39", text: "#fff" },
+  { label: "$100-200",min: 100,       max: 200,  bg: "#c1121f", text: "#fff" },
+  { label: "$200-500",min: 200,       max: 500,  bg: "#7b2d8e", text: "#f3e8ff" },
   { label: "> $500",  min: 500,       max: Infinity, bg: "#3c096c", text: "#e0aaff" },
 ] as const;
 

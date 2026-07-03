@@ -103,7 +103,7 @@ export default function LMPChart({ rtPoints, daPoints, color, nodeName }: Props)
   if (!data.length) {
     return (
       <div className="chart-container chart-empty">
-        Awaiting data — next 5-minute interval
+        Awaiting data. Next 5-minute interval.
       </div>
     );
   }

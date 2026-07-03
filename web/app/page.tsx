@@ -118,7 +118,7 @@ export default async function HomePage() {
       {!apiHealthy && (
         <div className="api-banner" role="alert">
           <span className="api-banner-dot" />
-          Data API unavailable — showing cached values where possible. Live
+          Data API unavailable. Showing cached values where possible. Live
           prices will resume automatically once the API is reachable.
         </div>
       )}
