@@ -153,6 +153,15 @@ body {
   animation: pulse 2s ease-in-out infinite;
 }
 
+/* ── Market glossary blurb ──────────────────────────────── */
+.market-glossary {
+  max-width: 860px;
+  margin: 0 0 24px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
 /* ── Chart lazy-load placeholder ────────────────────────── */
 .chart-loading {
   display: flex;

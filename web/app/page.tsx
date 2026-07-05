@@ -97,7 +97,7 @@ export default async function HomePage() {
   }));
 
   return (
-    <div className="dashboard">
+    <main className="dashboard">
       <header className="dash-header">
         <div className="dash-header-left">
           <a href="https://www.kardashevlabs.org" className="dash-brand">Kardashev Labs</a>
@@ -123,15 +123,22 @@ export default async function HomePage() {
         </div>
       )}
 
+      <p className="market-glossary">
+        LMP (locational marginal price) is the wholesale cost of electricity at a specific
+        grid location, in $/MWh. The DART spread is the difference between day-ahead (DA)
+        and real-time (RT) prices at a node; the congestion component is the portion of an
+        LMP caused by transmission constraints limiting power flow to that location.
+      </p>
+
       <div className="section-head">
-        <span className="section-title">Market overview</span>
+        <h2 className="section-title">Market overview</h2>
         <span className="section-desc">Primary hub RT LMP per ISO</span>
       </div>
       <OverviewCards stats={overviewStats} />
       <PriceLegend />
 
       <div className="section-head">
-        <span className="section-title">Market context</span>
+        <h2 className="section-title">Market context</h2>
         <span className="section-desc">Fundamentals affecting wholesale prices</span>
       </div>
       <MarketSignals
@@ -143,10 +150,10 @@ export default async function HomePage() {
       />
 
       <div className="section-head">
-        <span className="section-title">ISO detail</span>
+        <h2 className="section-title">ISO detail</h2>
         <span className="section-desc">RT &amp; day-ahead series by pricing node</span>
       </div>
       <DashboardShell isos={isoConfigs} />
-    </div>
+    </main>
   );
 }

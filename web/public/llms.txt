@@ -1,0 +1,27 @@
+# LMP Dashboard
+
+> Real-time and day-ahead locational marginal prices (wholesale electricity prices) across NYISO, PJM, CAISO, and SPP: energy, congestion, and loss components per pricing hub, plus fuel mix, natural gas prices, weather, and battery storage context.
+
+Part of [Kardashev Labs](https://kardashevlabs.org), which builds free, open-source tools for US energy grid intelligence.
+
+## What This Tool Shows
+
+- Real-time (RT) and day-ahead (DA) LMP at major pricing hubs across NYISO, PJM, CAISO, and SPP
+- 5-minute update cadence for real-time prices
+- Fuel mix, system load, natural gas prices and storage, weather, curtailment, reserve margins, and battery storage as market context
+
+## Key Terms
+
+- **LMP (locational marginal price)**: the wholesale cost of electricity at a specific grid location, in $/MWh. It has three components: energy, congestion, and losses.
+- **DART spread**: the difference between day-ahead (DA) and real-time (RT) prices at a given node. A large DART spread indicates the day-ahead market mispriced expected conditions.
+- **Congestion component**: the portion of an LMP caused by transmission constraints limiting power flow to or from a location. High congestion components indicate grid bottlenecks.
+
+## Key Facts
+
+- Covers NYISO, PJM, CAISO, and SPP
+- Free and open source (MIT license)
+- Source code: https://github.com/kardashev-lab
+- Shared data layer: https://data.kardashevlabs.org (kardashev-data)
+- Site: https://lmp.kardashevlabs.org
+- Parent site: https://kardashevlabs.org
+- Contact: ashutosh@kardashevlabs.org
