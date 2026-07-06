@@ -154,6 +154,13 @@ export default async function HomePage() {
         <span className="section-desc">RT &amp; day-ahead series by pricing node</span>
       </div>
       <DashboardShell isos={isoConfigs} />
+
+      <footer className="footer">
+        <p>
+          Use this data in Python:{" "}
+          <a href="https://pypi.org/project/kardashev/" target="_blank" rel="noopener noreferrer">pip install kardashev</a>
+        </p>
+      </footer>
     </main>
   );
 }
