@@ -5,7 +5,8 @@ Live at **[lmp.kardashevlabs.org](https://lmp.kardashevlabs.org)** · Part of [K
 Real-time wholesale electricity prices: locational marginal prices (LMP) across
 **NYISO, PJM, CAISO, and SPP**, broken into energy, congestion, and loss components,
 alongside the grid signals that explain them: fuel mix, system load, natural gas
-prices and storage, weather, curtailment, and reserve margins.
+prices and storage, weather, curtailment, reserve margins, and battery storage
+(CAISO).
 
 ## What is LMP?
 
@@ -36,7 +37,7 @@ ISO/RTO feeds → kardashev-data (ingest + Postgres + API)
 ## Stack
 
 - Next.js 15, React 19, TypeScript, Tailwind CSS v4
-- Recharts, Framer Motion
+- Recharts
 - Deployed on Railway as a standalone Next.js container
 
 ## Local development
