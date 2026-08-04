@@ -34,7 +34,7 @@ export const metadata: Metadata = {
     siteName: "Kardashev Labs",
   },
   twitter: {
-    card: "summary_large_image",
+    card: "summary",
     title: "LMP Dashboard | Kardashev Labs",
     description: "Electricity spot prices across major US grid operators, updated every 5 minutes.",
   },

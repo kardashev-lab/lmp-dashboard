@@ -100,7 +100,7 @@ export default async function HomePage() {
     <main className="dashboard">
       <header className="dash-header">
         <div className="dash-header-left">
-          <a href="https://www.kardashevlabs.org" className="dash-brand">Kardashev Labs</a>
+          <a href="https://kardashevlabs.org" className="dash-brand">Kardashev Labs</a>
           <h1 className="dash-title">LMP Dashboard</h1>
           <p className="dash-subtitle">
             Real-time locational marginal prices · NYISO, PJM, CAISO, SPP
@@ -157,8 +157,19 @@ export default async function HomePage() {
 
       <footer className="footer">
         <p>
-          Use this data in Python:{" "}
-          <a href="https://pypi.org/project/kardashev/" target="_blank" rel="noopener noreferrer">pip install kardashev</a>
+          <a href="https://kardashevlabs.org">Kardashev Labs</a>
+          {" · "}
+          <a href="https://lmp-map.kardashevlabs.org" target="_blank" rel="noopener noreferrer">
+            Nodal LMP map
+          </a>
+          {" · "}
+          <a href="https://docs.kardashevlabs.org" target="_blank" rel="noopener noreferrer">
+            Docs
+          </a>
+          {" · "}
+          <a href="https://pypi.org/project/kardashev/" target="_blank" rel="noopener noreferrer">
+            pip install kardashev
+          </a>
         </p>
       </footer>
     </main>
