@@ -1,17 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState, type MouseEvent } from "react";
 import {
-  ComposedChart,
-  Area,
-  Line,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-  ReferenceLine,
-} from "recharts";
+  AreaSeries,
+  Axis,
+  ChartFrame,
+  ChartTooltip,
+  LineSeries,
+  closestIndex,
+  clientToViewBoxX,
+  createTimeLinearScales,
+  padDomain,
+  toMs,
+} from "kardashev-charts";
 import type { LMPPoint } from "@/lib/api";
 import { fmtPrice, fmtTime } from "@/lib/format";
 
@@ -34,43 +35,10 @@ function buildChartData(rtPoints: LMPPoint[], daPoints: LMPPoint[]): ChartPoint[
   return [...map.values()].sort((a, b) => a.ts.localeCompare(b.ts));
 }
 
-function CustomTooltip({ active, payload, label }: {
-  active?: boolean;
-  payload?: Array<{ name: string; value: number | null; color: string }>;
-  label?: string;
-}) {
-  if (!active || !payload?.length) return null;
-  const entries = payload.filter(p => p.value != null);
-  if (!entries.length) return null;
-  return (
-    <div style={{
-      background: "#1c2430",
-      border: "1px solid #2a3441",
-      borderRadius: 8,
-      padding: "10px 14px",
-      boxShadow: "0 4px 12px rgba(0,0,0,0.4)",
-    }}>
-      <p style={{ color: "#64748b", marginBottom: 8, fontSize: 11 }}>
-        {label ? `${fmtTime(label)} UTC` : ""}
-      </p>
-      {entries.map(p => (
-        <div key={p.name} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-          <span style={{ width: 8, height: 3, background: p.color, borderRadius: 1 }} />
-          <span style={{ color: "#94a3b8", minWidth: 24, fontSize: 12 }}>{p.name}</span>
-          <span style={{ color: "#e8edf4", fontFamily: "var(--font-mono)", fontSize: 13, fontWeight: 600 }}>
-            ${fmtPrice(p.value)}
-          </span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 type Props = {
   rtPoints: LMPPoint[];
   daPoints: LMPPoint[];
   color: string;
-  /** Hub name used to build the screen-reader description of the chart. */
   nodeName?: string;
 };
 
@@ -78,9 +46,7 @@ function useChartInsets() {
   const [insets, setInsets] = useState({ left: 4, yWidth: 56 });
   useEffect(() => {
     const update = () => {
-      setInsets(
-        window.innerWidth < 768 ? { left: 12, yWidth: 72 } : { left: 4, yWidth: 56 },
-      );
+      setInsets(window.innerWidth < 768 ? { left: 12, yWidth: 72 } : { left: 4, yWidth: 56 });
     };
     update();
     window.addEventListener("resize", update);
@@ -91,14 +57,15 @@ function useChartInsets() {
 
 export default function LMPChart({ rtPoints, daPoints, color, nodeName }: Props) {
   const data = buildChartData(rtPoints, daPoints);
-  const gradId = `grad-${color.replace("#", "")}`;
   const { left, yWidth } = useChartInsets();
 
-  const latestRt = [...rtPoints].reverse().find(p => p.lmp != null)?.lmp ?? null;
+  const latestRt = [...rtPoints].reverse().find((p) => p.lmp != null)?.lmp ?? null;
   const chartLabel = [
     nodeName ? `${nodeName} real-time and day-ahead price chart.` : "Real-time and day-ahead price chart.",
     latestRt != null ? `Latest real-time price $${fmtPrice(latestRt)} per megawatt-hour.` : null,
-  ].filter(Boolean).join(" ");
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   if (!data.length) {
     return (
@@ -107,9 +74,6 @@ export default function LMPChart({ rtPoints, daPoints, color, nodeName }: Props)
       </div>
     );
   }
-
-  const allValues = data.flatMap(d => [d.rt, d.da]).filter((v): v is number => v != null);
-  const hasNeg = allValues.some(v => v < 0);
 
   return (
     <div>
@@ -124,53 +88,165 @@ export default function LMPChart({ rtPoints, daPoints, color, nodeName }: Props)
         </div>
       </div>
       <div className="chart-container" role="img" aria-label={chartLabel}>
-        <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart data={data} margin={{ top: 8, right: 12, left, bottom: 0 }}>
-            <defs>
-              <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor={color} stopOpacity={0.2} />
-                <stop offset="95%" stopColor={color} stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#1e2733" vertical={false} />
-            <XAxis
-              dataKey="ts"
-              tickFormatter={fmtTime}
-              tick={{ fontSize: 11, fill: "#64748b" }}
-              axisLine={{ stroke: "#2a3441" }}
-              tickLine={false}
-              interval="preserveStartEnd"
-              tickMargin={8}
+        <ChartFrame height={280} theme="substation" minWidth={60}>
+          {(size) => (
+            <LMPInner
+              data={data}
+              color={color}
+              width={size.width}
+              height={size.height}
+              left={left}
+              yWidth={yWidth}
             />
-            <YAxis
-              tick={{ fontSize: 11, fill: "#64748b", fontFamily: "var(--font-mono)" }}
-              axisLine={false}
-              tickLine={false}
-              tickFormatter={(v) => `$${fmtPrice(v)}`}
-              width={yWidth}
-            />
-            <Tooltip content={<CustomTooltip />} cursor={{ stroke: "#3d4f63", strokeWidth: 1 }} />
-            {hasNeg && <ReferenceLine y={0} stroke="#3d4f63" strokeWidth={1} strokeDasharray="4 4" />}
-            <Line
-              type="monotone" dataKey="da" name="DA"
-              stroke="#64748b" strokeWidth={1.5} strokeDasharray="5 4"
-              dot={false} connectNulls
-              activeDot={{ r: 3, fill: "#94a3b8", strokeWidth: 0 }}
-            />
-            <Area
-              type="monotone" dataKey="rt"
-              fill={`url(#${gradId})`} stroke="none"
-              dot={false} connectNulls={false} isAnimationActive={false}
-            />
-            <Line
-              type="monotone" dataKey="rt" name="RT"
-              stroke={color} strokeWidth={2}
-              dot={false} connectNulls={false}
-              activeDot={{ r: 4, fill: color, strokeWidth: 0 }}
-            />
-          </ComposedChart>
-        </ResponsiveContainer>
+          )}
+        </ChartFrame>
       </div>
+    </div>
+  );
+}
+
+function LMPInner({
+  data,
+  color,
+  width,
+  height,
+  left,
+  yWidth,
+}: {
+  data: ChartPoint[];
+  color: string;
+  width: number;
+  height: number;
+  left: number;
+  yWidth: number;
+}) {
+  const [hover, setHover] = useState<number | null>(null);
+  const padding = { top: 8, right: 12, bottom: 24, left: Math.max(left, yWidth) };
+  const gradId = `grad-${color.replace("#", "")}`;
+
+  const { scales, xs, rtPts, daPts, yTicks, xTicks, hasNeg } = useMemo(() => {
+    const times = data.map((d) => toMs(d.ts));
+    const minT = Math.min(...times);
+    const maxT = Math.max(...times);
+    const allValues = data.flatMap((d) => [d.rt, d.da]).filter((v): v is number => v != null);
+    const hasNeg = allValues.some((v) => v < 0);
+    const [lo, hi] = padDomain(Math.min(...allValues, 0), Math.max(...allValues, 0), 0.08);
+    const scales = createTimeLinearScales({
+      width,
+      height,
+      xDomain: [minT, maxT],
+      yDomain: [lo, hi],
+      padding,
+    });
+    const xs = data.map((d) => scales.x(new Date(d.ts)));
+    const rtPts = data.map((d) => ({
+      x: scales.x(new Date(d.ts)),
+      y: d.rt != null ? scales.y(d.rt) : null,
+    }));
+    const daPts = data.map((d) => ({
+      x: scales.x(new Date(d.ts)),
+      y: d.da != null ? scales.y(d.da) : null,
+    }));
+    const tickCount = 5;
+    const xTicks = Array.from({ length: tickCount }, (_, i) => {
+      const t = minT + ((maxT - minT) * i) / (tickCount - 1 || 1);
+      return { value: new Date(t), label: fmtTime(new Date(t).toISOString()) };
+    });
+    const yTicks = [lo, (lo + hi) / 2, hi].map((v) => ({
+      value: v,
+      label: `$${fmtPrice(v)}`,
+    }));
+    return { scales, xs, rtPts, daPts, yTicks, xTicks, hasNeg };
+  }, [data, width, height, left, yWidth]);
+
+  const onMove = (e: MouseEvent<SVGSVGElement>) => {
+    setHover(closestIndex(xs, clientToViewBoxX(e.currentTarget, e.clientX, width)));
+  };
+
+  const h = hover != null ? data[hover] : null;
+  const hx = hover != null ? xs[hover] : null;
+
+  return (
+    <div style={{ position: "relative", width, height }}>
+      <svg width={width} height={height} onMouseMove={onMove} onMouseLeave={() => setHover(null)}>
+        <defs>
+          <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%" stopColor={color} stopOpacity={0.2} />
+            <stop offset="95%" stopColor={color} stopOpacity={0} />
+          </linearGradient>
+        </defs>
+        <Axis
+          x={scales.x}
+          y={scales.y}
+          width={width}
+          height={height}
+          padding={padding}
+          theme="substation"
+          xTicks={xTicks}
+          yTicks={yTicks}
+          showGrid
+        />
+        {hasNeg && (
+          <line
+            x1={padding.left}
+            x2={width - padding.right}
+            y1={scales.y(0)}
+            y2={scales.y(0)}
+            stroke="#3d4f63"
+            strokeDasharray="4 4"
+          />
+        )}
+        <LineSeries
+          points={daPts}
+          stroke="#64748b"
+          strokeWidth={1.5}
+          strokeDasharray="5 4"
+          curve="monotone"
+        />
+        <AreaSeries
+          points={rtPts}
+          y0={scales.y(0)}
+          fill={`url(#${gradId})`}
+          fillOpacity={1}
+          curve="monotone"
+        />
+        <LineSeries points={rtPts} stroke={color} strokeWidth={2} curve="monotone" />
+        {hx != null && (
+          <line
+            x1={hx}
+            x2={hx}
+            y1={padding.top}
+            y2={height - padding.bottom}
+            stroke="#3d4f63"
+          />
+        )}
+      </svg>
+      {h && hx != null && (
+        <div style={{ position: "absolute", left: Math.min(hx + 8, width - 160), top: 8 }}>
+          <ChartTooltip
+            theme="substation"
+            style={{ background: "#1c2430", border: "1px solid #2a3441" }}
+          >
+            <p style={{ color: "#64748b", marginBottom: 8, fontSize: 11 }}>
+              {fmtTime(h.ts)} UTC
+            </p>
+            {h.rt != null && (
+              <div style={{ display: "flex", gap: 10, marginBottom: 4 }}>
+                <span style={{ width: 8, height: 3, background: color, marginTop: 6 }} />
+                <span style={{ color: "#94a3b8", minWidth: 24 }}>RT</span>
+                <span style={{ color: "#e8edf4", fontWeight: 600 }}>${fmtPrice(h.rt)}</span>
+              </div>
+            )}
+            {h.da != null && (
+              <div style={{ display: "flex", gap: 10 }}>
+                <span style={{ width: 8, height: 0, borderTop: "2px dashed #64748b", marginTop: 7 }} />
+                <span style={{ color: "#94a3b8", minWidth: 24 }}>DA</span>
+                <span style={{ color: "#e8edf4", fontWeight: 600 }}>${fmtPrice(h.da)}</span>
+              </div>
+            )}
+          </ChartTooltip>
+        </div>
+      )}
     </div>
   );
 }

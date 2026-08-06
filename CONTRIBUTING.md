@@ -8,7 +8,7 @@ Thanks for helping make wholesale power-market prices easier to understand. This
 - Breaks prices into energy, congestion, and loss components where available.
 - Reads from the Kardashev Data API at `https://data.kardashevlabs.org`.
 
-Stack: Next.js 15, React 19, TypeScript, Tailwind CSS v4, Recharts.
+Stack: Next.js 15, React 19, TypeScript, Tailwind CSS v4, kardashev-charts (D3).
 
 ## Local setup
 
