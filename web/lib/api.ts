@@ -112,7 +112,7 @@ export type ReserveMarginPoint = {
 
 // ── Core fetch ────────────────────────────────────────────────────────
 
-async function apiFetch<T>(path: string, revalidate = 300): Promise<T | null> {
+async function apiFetch<T>(path: string, revalidate = 60): Promise<T | null> {
   try {
     const res = await fetch(`${API}${path}`, { next: { revalidate } });
     if (!res.ok) return null;
